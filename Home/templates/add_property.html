@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .step-form { display: none; }
+    .step-form.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+    .progress-bar { transition: width 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        .main-content { margin-left: 0 !important; padding: 15px; }
+        .sidebar { display: none; } /* Use a burger menu for real apps */
+    }
+</style>
+
+<div class="container py-4">
+    <div class="card shadow-lg border-0 max-width-600 mx-auto">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="fw-bold mb-4">Add New Property</h2>
+            
+            <div class="progress mb-4" style="height: 8px;">
+                <div id="form-progress" class="progress-bar bg-primary" style="width: 50%;"></div>
+            </div>
+
+            <form id="propertyWizard" method="POST">
+                {% csrf_token %}
+                
+                <div class="step-form active" id="step1">
+                    <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>General Information</h5>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">PROPERTY NAME</label>
+                        <input type="text" name="name" class="form-control form-control-lg" placeholder="e.g. Eldopoly Heights" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">PHYSICAL LOCATION</label>
+                        <input type="text" name="location" class="form-control form-control-lg" placeholder="e.g. Eldoret, Elgon View" required>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 btn-lg next-step">Next Step <i class="bi bi-arrow-right ms-2"></i></button>
+                </div>
+
+                <div class="step-form" id="step2">
+                    <h5 class="mb-3"><i class="bi bi-check2-circle me-2"></i>Final Confirmation</h5>
+                    <div class="p-3 bg-light rounded-3 mb-4">
+                        <p class="mb-1 text-muted small">By submitting, this property will be linked to your account as the legal owner.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50 prev-step">Back</button>
+                        <button type="submit" class="btn btn-success w-50">Add Property</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const steps = document.querySelectorAll(".step-form");
+    const progress = document.getElementById("form-progress");
+    const nextBtn = document.querySelector(".next-step");
+    const prevBtn = document.querySelector(".prev-step");
+
+    nextBtn.addEventListener("click", () => {
+        // Simple Validation Check
+        const inputs = steps[0].querySelectorAll("input");
+        let valid = true;
+        inputs.forEach(i => { if(!i.value) { i.classList.add("is-invalid"); valid = false; } else { i.classList.remove("is-invalid"); } });
+
+        if (valid) {
+            steps[0].classList.remove("active");
+            steps[1].classList.add("active");
+            progress.style.width = "100%";
+        }
+    });
+
+    prevBtn.addEventListener("click", () => {
+        steps[1].classList.remove("active");
+        steps[0].classList.add("active");
+        progress.style.width = "50%";
+    });
+</script>
+{% endblock %}

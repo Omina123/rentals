@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .payment-card {
+        border-radius: 20px;
+        transition: transform 0.2s;
+    }
+    .form-control-lg {
+        border-radius: 12px;
+        border: 2px solid #eee;
+        font-weight: 600;
+    }
+    .form-control-lg:focus {
+        border-color: #000;
+        box-shadow: none;
+    }
+    .tenant-badge {
+        background: #e9ecef;
+        padding: 8px 16px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="mb-4">
+        <a href="{% url 'lease_list' %}" class="text-decoration-none text-dark fw-bold">
+            <i class="bi bi-arrow-left me-2"></i>Back to Leases
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card payment-card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="display-6 mb-2">💰</div>
+                        <h2 class="fw-bold text-dark">Record Payment</h2>
+                        <p class="text-muted">Enter the collection details below</p>
+                    </div>
+
+                    <hr class="my-4 opacity-50">
+
+                    <div class="mb-4 text-center">
+                        <div class="tenant-badge mb-2">
+                            <i class="bi bi-person-fill me-2"></i>{{ lease.tenant.get_full_name|default:lease.tenant.username }}
+                        </div>
+                        <p class="small text-uppercase tracking-wider text-muted mb-0">Property & Unit</p>
+                        <p class="fw-bold">{{ lease.unit.property.name }} — {{ lease.unit.unit_number }}</p>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Amount Collected (KES)</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border: 2px solid #eee;">KES</span>
+                                <input type="number" name="amount" class="form-control form-control-lg border-start-0" 
+                                       value="{{ lease.monthly_rent }}" step="0.01" required>
+                            </div>
+                            <div class="form-text mt-2 text-center">
+                                Expected monthly rent: <strong>KES {{ lease.monthly_rent }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Payment Reference (Optional)</label>
+                            <input type="text" name="reference" class="form-control form-control-lg" placeholder="MPESA Code / Cheque No.">
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 btn-lg rounded-pill py-3 fw-bold shadow-sm">
+                            Confirm & Record Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="text-muted small">
+                    <i class="bi bi-shield-lock-fill me-1"></i> 
+                    This transaction will be logged in the permanent ledger.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

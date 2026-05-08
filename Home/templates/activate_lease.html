@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        height: calc(3.5rem + 2px); /* Matches form-select-lg height */
+    }
+    .card { transition: all 0.3s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="row g-0">
+                    <div class="col-md-4 bg-dark text-white p-4 p-lg-5">
+                        <div class="d-flex align-items-center mb-4">
+                            <i class="bi bi-house-door fs-2 me-3 text-primary"></i>
+                            <h4 class="fw-bold mb-0">Unit Summary</h4>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="text-muted small d-block mb-1">PROPERTY</label>
+                            <span class="fw-bold fs-5 text-uppercase">{{ unit.property.name }}</span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="text-muted small d-block mb-1">UNIT NUMBER</label>
+                            <span class="fw-bold display-5 text-primary">{{ unit.unit_number }}</span>
+                        </div>
+                        
+                        <hr class="opacity-25 my-4">
+                        
+                        <div class="mb-4">
+                            <label class="text-muted small d-block mb-1">STANDARD MONTHLY RENT</label>
+                            <span class="fs-4">KES {{ unit.rent_amount|floatformat:2 }}</span>
+                        </div>
+
+                        <div class="mt-auto pt-5">
+                            <a href="{% url 'unit_manager' unit.property.id %}" class="btn btn-outline-light btn-sm rounded-pill">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Units
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8 p-4 p-md-5 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="fw-bold mb-0 text-dark">Activate Lease</h2>
+                            <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill">Status: Available</span>
+                        </div>
+                        
+                        <form method="POST" id="leaseForm">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-muted small">SEARCH MEMBER (BY NAME OR PHONE)</label>
+                                <select name="tenant" id="tenantSelect" class="form-select" required>
+                                    <option value=""></option>
+                                    {% for tenant in tenants %}
+                                        <option value="{{ tenant.id }}">
+                                            {{ tenant.full_name }} — {{ tenant.phone_number }} (ID: {{ tenant.id_number }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="mt-2">
+                                    <a href="{% url 'create_tenant' %}" class="small text-decoration-none text-primary">
+                                        <i class="bi bi-person-plus me-1"></i>Add new member first
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted small">LEASE START DATE</label>
+                                    <input type="date" name="start_date" id="startDate" class="form-control form-control-lg border-2 shadow-sm" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted small">END DATE (OPTIONAL)</label>
+                                    <input type="date" name="end_date" class="form-control form-control-lg border-2 shadow-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted small">AGREED RENT (KES)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">KES</span>
+                                        <input type="number" name="agreed_rent" id="rentInput" class="form-control form-control-lg border-2" value="{{ unit.rent_amount }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-muted small">AGREED DEPOSIT (KES)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">KES</span>
+                                        <input type="number" name="agreed_deposit" id="depositInput" class="form-control form-control-lg border-2" value="{{ unit.deposit_amount }}" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-4 mb-4" style="background-color: #f1f5f9; border: 1px dashed #cbd5e1;">
+                                <div class="row align-items-center text-center text-md-start">
+                                    <div class="col-md-7">
+                                        <h6 class="text-muted mb-1">Total Move-in Requirement</h6>
+                                        <p class="small text-muted mb-0">Sum of agreed rent and refundable deposit.</p>
+                                    </div>
+                                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                                        <span class="display-6 fw-bold text-primary" id="totalDisplay">KES 0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-lg py-3">
+                                Confirm & Activate Lease <i class="bi bi-send-check ms-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Searchable Dropdown
+        $('#tenantSelect').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Type name or phone number...',
+            allowClear: true,
+            containerCssClass: 'select2-lg'
+        });
+
+        const rentInput = document.getElementById('rentInput');
+        const depositInput = document.getElementById('depositInput');
+        const totalDisplay = document.getElementById('totalDisplay');
+
+        // Dynamic Calculation Function
+        function calculateTotal() {
+            const rent = parseFloat(rentInput.value) || 0;
+            const deposit = parseFloat(depositInput.value) || 0;
+            const total = rent + deposit;
+            totalDisplay.innerText = `KES ${total.toLocaleString()}`;
+        }
+
+        // Listeners for numbers
+        [rentInput, depositInput].forEach(input => {
+            input.addEventListener('input', calculateTotal);
+        });
+
+        // Set default date to today
+        const dateInput = document.getElementById('startDate');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+        dateInput.setAttribute('min', today);
+
+        // Run on load
+        calculateTotal();
+    });
+</script>
+{% endblock %}

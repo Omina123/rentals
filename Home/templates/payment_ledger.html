@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .status-badge { padding: 6px 12px; border-radius: 50px; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
+    .status-paid { background: #e3fcef; color: #00875a; }
+    .status-pending { background: #fff9e6; color: #974f00; }
+    .status-overdue { background: #ffebe6; color: #de350b; }
+    .status-partially_paid { background: #deebff; color: #0747a6; }
+    
+    .ledger-row:hover { background-color: #f8f9fa; cursor: pointer; transition: 0.2s; }
+    .progress { height: 8px; border-radius: 10px; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">Financial Ledger</h2>
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-white"><i class="bi bi-funnel"></i></span>
+            <select class="form-select border-start-0" id="statusFilter">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="overdue">Overdue</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" id="paymentTable">
+                <thead class="bg-light">
+                    <tr class="text-secondary small fw-bold">
+                        <th class="ps-4">BILLING MONTH</th>
+                        <th>TENANT & UNIT</th>
+                        <th>COLLECTION PROGRESS</th>
+                        <th>STATUS</th>
+                        <th class="text-end pe-4">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr class="ledger-row" data-status="{{ p.status }}">
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ p.billing_month|date:"F Y" }}</div>
+                            <small class="text-muted">Due: {{ p.due_date }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ p.lease.tenant.get_full_name }}</div>
+                            <small class="text-primary">Unit {{ p.lease.unit.unit_number }}</small>
+                        </td>
+                        <td style="min-width: 200px;">
+                            <div class="d-flex justify-content-between mb-1 small">
+                                <span>KES {{ p.amount_paid }} paid</span>
+                                <span class="text-muted">of {{ p.amount_due }}</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar {% if p.status == 'paid' %}bg-success{% else %}bg-primary{% endif %}" 
+                                     role="progressbar" id="bar-{{ p.id }}" data-paid="{{ p.amount_paid }}" data-due="{{ p.amount_due }}"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ p.status }}">{{ p.get_status_display }}</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if p.status != 'paid' %}
+                            <button class="btn btn-sm btn-dark px-3 rounded-pill" onclick="openPaymentModal('{{ p.id }}', '{{ p.amount_due }}', '{{ p.amount_paid }}')">
+                                Record Pay
+                            </button>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-secondary px-3 rounded-pill" disabled><i class="bi bi-check2-all"></i> Cleared</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="payModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form id="payForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0">
+                    <h5 class="fw-bold">Record Rent Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4">
+                    <div class="bg-light p-3 rounded-3 mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Remaining Balance:</span>
+                            <span class="fw-bold text-danger" id="modalBalance">KES 0.00</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">AMOUNT PAID NOW</label>
+                        <input type="number" name="amount_to_add" id="payAmount" class="form-control form-control-lg" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">M-PESA / REF CODE</label>
+                        <input type="text" name="ref_code" class="form-control" placeholder="ABC123XYZ" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Confirm Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Dynamic Progress Bar Logic
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+        const paid = parseFloat(bar.dataset.paid);
+        const due = parseFloat(bar.dataset.due);
+        const percent = (paid / due) * 100;
+        bar.style.width = percent + "%";
+    });
+
+    // 2. Modal Logic with Balance Calculation
+    function openPaymentModal(id, due, paid) {
+        const balance = parseFloat(due) - parseFloat(paid);
+        document.getElementById('modalBalance').innerText = "KES " + balance.toLocaleString();
+        document.getElementById('payAmount').value = balance;
+        document.getElementById('payAmount').max = balance; // Prevent overpayment
+        
+        const form = document.getElementById('payForm');
+        form.action = `/payment/process/${id}/`; // Ensure this matches your URL
+        
+        new bootstrap.Modal(document.getElementById('payModal')).show();
+    }
+
+    // 3. JS Table Filter
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const filter = this.value;
+        document.querySelectorAll('.ledger-row').forEach(row => {
+            row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

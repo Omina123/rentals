@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        background: #eef2ff;
+        color: #4f46e5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    .lease-card {
+        border: none;
+        border-radius: 20px;
+        transition: transform 0.2s;
+        background: #fff;
+    }
+    .lease-card:hover {
+        transform: translateY(-5px);
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .text-navy { color: #111c44; }
+</style>
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold text-navy mb-1">Lease Management</h2>
+            <p class="text-muted small">Manage billing cycles and tenant transitions.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'payment_ledger' %}" class="btn btn-outline-dark rounded-pill px-4 fw-bold small">
+                <i class="bi bi-journal-text me-2"></i>Ledger
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for lease in leases %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card lease-card shadow-sm p-4 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="avatar-circle">
+                        {{ lease.tenant.get_full_name|slice:":1"|upper }}
+                    </div>
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 small">Active Lease</span>
+                </div>
+                
+                <h5 class="fw-bold mb-1 text-navy">{{ lease.tenant.get_full_name }}</h5>
+                <p class="text-muted small mb-4">
+                    <i class="bi bi-door-open me-1"></i> Unit {{ lease.unit.unit_number }} 
+                    <span class="mx-2">|</span> 
+                    <i class="bi bi-cash me-1"></i> KES {{ lease.agreed_rent }}
+                </p>
+                
+                <div class="d-grid gap-2 mt-auto">
+                    <button class="btn btn-dark py-2 rounded-pill fw-bold shadow-sm" 
+                            onclick="openBillModal('{{ lease.id }}', '{{ lease.tenant.get_full_name }}', '{{ lease.agreed_rent }}')">
+                        <i class="bi bi-receipt me-2"></i>Generate Bill
+                    </button>
+                    
+                    <button class="btn btn-outline-danger py-2 rounded-pill fw-bold"
+                            onclick="handleVacate('{% url 'vacate_unit' lease.unit.id %}', '{{ lease.unit.unit_number }}')">
+                        <i class="bi bi-box-arrow-right me-2"></i>Vacate Unit
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="mb-3 text-muted"><i class="bi bi-folder-x fs-1"></i></div>
+            <h4 class="text-muted">No active leases found.</h4>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="billModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="billForm" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="fw-bold text-navy">Generate Monthly Bill</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-4">You are creating an invoice for <strong id="billTenantName" class="text-dark"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">BILLING DATE</label>
+                        <input type="date" name="billing_month" id="billMonth" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">DUE DATE</label>
+                        <input type="date" name="due_date" id="billDue" class="form-control" required>
+                    </div>
+
+                    <div class="p-3 rounded-3 bg-light text-navy small border fw-bold text-center">
+                        Invoice Amount: <span id="billRentAmount"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold">Post to Ledger</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle Bill Modal
+function openBillModal(id, name, rent) {
+    const form = document.getElementById('billForm');
+    form.action = `/lease/${id}/create-bill/`;
+    
+    document.getElementById('billTenantName').innerText = name;
+    document.getElementById('billRentAmount').innerText = "KES " + rent;
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('billMonth').value = today;
+    
+    // Set default due date to 5 days from now
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 5);
+    document.getElementById('billDue').value = nextWeek.toISOString().split('T')[0];
+    
+    new bootstrap.Modal(document.getElementById('billModal')).show();
+}
+
+// Handle Vacate Logic
+function handleVacate(url, unitNum) {
+    if (confirm(`IMPORTANT: Are you sure you want to vacate Unit ${unitNum}? \n\nThis will end the active lease and return the unit to 'Available' status.`)) {
+        window.location.href = url;
+    }
+}
+</script>
+
+{% endblock %}

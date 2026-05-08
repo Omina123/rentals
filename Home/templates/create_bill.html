@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb small">
+                    <li class="breadcrumb-item"><a href="{% url 'payment_ledger' %}" class="text-decoration-none">Ledger</a></li>
+                    <li class="breadcrumb-item active">Generate Invoice</li>
+                </ol>
+            </nav>
+
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-header bg-dark text-white p-4 border-0">
+                    <h4 class="fw-bold mb-1">Generate Monthly Bill</h4>
+                    <p class="small opacity-75 mb-0">Tenant: {{ lease.tenant.get_full_name }}</p>
+                </div>
+
+                <div class="card-body p-4 p-lg-5 bg-white">
+                    <div class="d-flex justify-content-between align-items-center p-3 rounded-3 mb-4" style="background: #f8f9fa; border-left: 5px solid #0d6efd;">
+                        <div>
+                            <span class="text-muted small fw-bold d-block">UNIT IDENTIFIER</span>
+                            <span class="fw-bold fs-5">#{{ lease.unit.unit_number }}</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted small fw-bold d-block">CONTRACT RENT</span>
+                            <span class="fw-bold fs-5 text-primary">KES {{ lease.agreed_rent }}</span>
+                        </div>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-secondary">BILLING CYCLE (MONTH)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-2"><i class="bi bi-calendar-check"></i></span>
+                                <input type="date" name="billing_month" id="billingMonth" class="form-control form-control-lg border-2 shadow-none" required>
+                            </div>
+                            <div class="form-text mt-2">Select any date within the month you wish to bill.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-secondary">PAYMENT DUE DATE</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-2"><i class="bi bi-alarm"></i></span>
+                                <input type="date" name="due_date" id="dueDate" class="form-control form-control-lg border-2 shadow-none" required>
+                            </div>
+                        </div>
+
+                        <div class="bg-light p-3 rounded-3 mb-4">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>Base Rent:</span>
+                                <span class="fw-bold">KES {{ lease.agreed_rent }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Service Charges:</span>
+                                <span class="fw-bold">KES 0.00</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between fw-bold text-dark">
+                                <span>Total Invoice:</span>
+                                <span>KES {{ lease.agreed_rent }}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow">
+                                <i class="bi bi-plus-circle me-2"></i>Generate Invoice
+                            </button>
+                            <a href="{% url 'payment_ledger' %}" class="btn btn-link text-muted text-decoration-none small fw-bold">Cancel and Return</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded-3 border border-primary border-opacity-25">
+                <p class="small text-primary mb-0">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>Architect's Note:</strong> This module automatically pulls the <em>Agreed Rent</em> from the lease contract to ensure financial compliance and prevent manual entry errors.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-set the billing month to today for convenience
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('billingMonth').value = today;
+    
+    // Set default due date to 5 days from now
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 5);
+    document.getElementById('dueDate').value = futureDate.toISOString().split('T')[0];
+</script>
+{% endblock %}

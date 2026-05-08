@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Professional Fintech Styling */
+    .unit-card { 
+        border-radius: 20px; 
+        border: 1px solid rgba(0,0,0,0.05); 
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+        background: #fff;
+        position: relative;
+        overflow: hidden;
+    }
+    .unit-card:hover { 
+        transform: translateY(-10px); 
+        box-shadow: 0 20px 40px rgba(0,0,0,0.08); 
+        border-color: #4318ff;
+    }
+    
+    .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    
+    /* Status Animations */
+    .bg-vacant { 
+        background-color: #01b574; 
+        box-shadow: 0 0 0 0 rgba(1, 181, 116, 0.7); 
+        animation: pulse-green 2s infinite; 
+    }
+    .bg-occupied { background-color: #ee5d6c; }
+
+    @keyframes pulse-green {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(1, 181, 116, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(1, 181, 116, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(1, 181, 116, 0); }
+    }
+
+    /* Side Panel logic */
+    #addUnitPanel { 
+        position: fixed; 
+        right: -450px; 
+        top: 0; 
+        width: 400px; 
+        height: 100vh; 
+        background: white; 
+        z-index: 1050; 
+        transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+        box-shadow: -15px 0 35px rgba(0,0,0,0.1); 
+        padding: 40px; 
+    }
+    #addUnitPanel.open { right: 0; }
+    
+    .overlay { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(17, 28, 68, 0.4); 
+        display: none; 
+        z-index: 1040; 
+        backdrop-filter: blur(4px); 
+    }
+
+    .tracking-wider { letter-spacing: 1px; }
+</style>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="container-fluid">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 mt-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'property_list' %}" class="text-decoration-none text-muted small">Properties</a></li>
+                    <li class="breadcrumb-item active small text-primary fw-bold">{{ property.name }}</li>
+                </ol>
+            </nav>
+            <h2 class="fw-800 text-navy mb-0">{{ property.name }}</h2>
+            <p class="text-muted small mb-0">{{ units.count }} Total Managed Units</p>
+        </div>
+        
+        <div class="d-flex gap-3 mt-3 mt-md-0">
+            <div class="input-group bg-white rounded-pill px-3 py-1 shadow-sm border" style="max-width: 280px;">
+                <span class="input-group-text bg-transparent border-0 text-muted"><i class="fas fa-search"></i></span>
+                <input type="text" id="unitSearch" class="form-control border-0 shadow-none bg-transparent" placeholder="Search Unit ID...">
+            </div>
+            <button onclick="togglePanel()" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="fas fa-plus me-2"></i>New Unit
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4" id="unitGrid">
+        {% for unit in units %}
+        <div class="col-md-6 col-lg-3 unit-item" data-unit="{{ unit.unit_number }}">
+            <div class="card unit-card h-100 p-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <span class="text-muted small fw-bold tracking-wider text-uppercase">Unit #{{ unit.unit_number }}</span>
+                    <div class="d-flex align-items-center bg-light px-2 py-1 rounded-pill">
+                        <span class="status-dot {% if unit.is_occupied %}bg-occupied{% else %}bg-vacant{% endif %}"></span>
+                        <small class="fw-800 text-navy" style="font-size: 0.65rem; text-transform: uppercase;">
+                            {% if unit.is_occupied %}Leased{% else %}Vacant{% endif %}
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-muted small mb-1">Standard Monthly Rent</p>
+                    <h3 class="fw-800 text-navy">KES {{ unit.rent_amount }}</h3>
+                </div>
+
+                <div class="mt-auto d-flex gap-2 pt-3 border-top">
+                    {% if not unit.is_occupied %}
+                        <a href="{% url 'activate_lease' unit.id %}" class="btn btn-primary w-100 rounded-pill btn-sm fw-bold py-2">
+                            Set Lease <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    {% else %}
+                        <button type="button" 
+                                class="btn btn-outline-danger w-100 rounded-pill btn-sm fw-bold py-2"
+                                onclick="handleVacate('{% url 'vacate_unit' unit.id %}', '{{ unit.unit_number }}')">
+                            Vacate Unit
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <img src="https://illustrations.popsy.co/gray/real-estate.svg" height="150" class="mb-3">
+            <h4 class="text-muted">No units found for this property</h4>
+            <button onclick="togglePanel()" class="btn btn-link text-primary fw-bold text-decoration-none">Add the first unit</button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="addUnitPanel">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h3 class="fw-800 m-0">Add Unit</h3>
+        <button onclick="togglePanel()" class="btn-close shadow-none"></button>
+    </div>
+    
+    <form id="addUnitForm">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label class="form-label small fw-800 text-navy text-uppercase tracking-wider">Unit Number</label>
+            <input type="text" name="unit_number" class="form-control form-control-lg border-2 shadow-none rounded-4" placeholder="e.g. A-101" required>
+        </div>
+        
+        <div class="mb-4">
+            <label class="form-label small fw-800 text-navy text-uppercase tracking-wider">Monthly Rent (KES)</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-2 rounded-start-4">KES</span>
+                <input type="number" name="rent_amount" class="form-control form-control-lg border-2 shadow-none rounded-end-4" placeholder="15000" required>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <label class="form-label small fw-800 text-navy text-uppercase tracking-wider">Security Deposit</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-2 rounded-start-4">KES</span>
+                <input type="number" name="deposit_amount" class="form-control form-control-lg border-2 shadow-none rounded-end-4" placeholder="15000" required>
+            </div>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-3 rounded-pill fw-bold fs-6 shadow">
+            Create Unit Entry
+        </button>
+    </form>
+</div>
+
+<script>
+    // 1. Panel & Overlay Controls
+    function togglePanel() {
+        const panel = document.getElementById('addUnitPanel');
+        const overlay = document.getElementById('overlay');
+        panel.classList.toggle('open');
+        overlay.style.display = panel.classList.contains('open') ? 'block' : 'none';
+    }
+
+    document.getElementById('overlay').onclick = togglePanel;
+
+    // 2. Real-time Search Logic
+    document.getElementById('unitSearch').addEventListener('input', function(e) {
+        let filter = e.target.value.toLowerCase();
+        let units = document.querySelectorAll('.unit-item');
+        
+        units.forEach(unit => {
+            let num = unit.getAttribute('data-unit').toLowerCase();
+            unit.style.display = num.includes(filter) ? '' : 'none';
+        });
+    });
+
+    // 3. Vacate Handler with Confirmation
+    function handleVacate(url, unitNum) {
+        if (confirm(`Action Required: Are you sure you want to vacate Unit ${unitNum}? \n\nThis will terminate the active lease and make the unit available for new tenants.`)) {
+            window.location.href = url;
+        }
+    }
+
+    // 4. AJAX Submission for New Unit
+    document.getElementById('addUnitForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Processing...`;
+        btn.disabled = true;
+
+        const formData = new FormData(e.target);
+        
+        try {
+            const response = await fetch("{% url 'add_unit_ajax' property.id %}", {
+                method: "POST",
+                body: formData,
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            });
+
+            if (response.ok) {
+                btn.innerHTML = `<i class="fas fa-check me-2"></i> Created!`;
+                btn.className = "btn btn-success w-100 py-3 rounded-pill fw-bold";
+                setTimeout(() => location.reload(), 1000); 
+            } else {
+                throw new Error("Validation Error");
+            }
+        } catch (err) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            alert("Error: Check your connection or form data.");
+        }
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% for message in messages %}
+    <div style="color:red; font-weight:bold">{{ message }}</div>
+{% endfor %}
+<div class="container mt-5">
+    <div class="card shadow-sm border-0" style="max-width: 500px; margin: auto;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Register New Tenant</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" placeholder="e.g. John Doe" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Phone Number (Safaricom/Airtel)</label>
+                    <input type="text" name="phone_number" class="form-control" placeholder="07xxxxxxxx" required>
+                    <small class="text-muted">Tenant will receive rent SMS on this number.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">National ID Number</label>
+                    <input type="text" name="id_number" class="form-control" placeholder="12345678" required>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Save Tenant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

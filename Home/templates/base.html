@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eldopoly RMS | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #f4f7fe;
+            --sidebar-color: #ffffff;
+            --accent-blue: #4318ff;
+            --card-radius: 20px;
+            --text-navy: #1b254b;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-navy);
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            min-width: var(--sidebar-width);
+            max-width: var(--sidebar-width);
+            background: var(--sidebar-color);
+            min-height: 100vh;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: fixed;
+            z-index: 1000;
+            border-right: 1px solid #eef2f8;
+        }
+
+        #sidebar.collapsed { margin-left: calc(var(--sidebar-width) * -1); }
+
+        .sidebar-brand {
+            padding: 30px;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-link {
+            padding: 15px 30px;
+            color: #a3aed0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            transition: 0.2s;
+            border-right: 4px solid transparent;
+            text-decoration: none;
+        }
+
+        .nav-link i { font-size: 1.2rem; margin-right: 15px; width: 25px; text-align: center; }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-navy);
+            background: linear-gradient(90deg, rgba(67, 24, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+            border-right-color: var(--accent-blue);
+        }
+
+        /* Main Content Area */
+        .main-wrapper { 
+            width: 100%; 
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s;
+        }
+
+        .main-wrapper.expanded { margin-left: 0; }
+
+        .top-navbar {
+            padding: 20px 40px;
+            background: rgba(244, 247, 254, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .content-container { padding: 30px 40px; }
+
+        /* Customizing SweetAlert to match Eldopoly Theme */
+        .swal2-popup {
+            border-radius: var(--card-radius) !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            padding: 2rem !important;
+        }
+        .swal2-styled.swal2-confirm {
+            background-color: var(--accent-blue) !important;
+            border-radius: 50px !important;
+            padding: 12px 30px !important;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar { margin-left: calc(var(--sidebar-width) * -1); }
+            #sidebar.active { margin-left: 0; }
+            .main-wrapper { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <nav id="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-building-circle-check me-2"></i>ZAKA R M S
+        </div>
+        <div class="mt-4">
+            <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <a href="{% url 'property_list' %}" class="nav-link {% if 'property' in request.path %}active{% endif %}">
+                <i class="fas fa-city"></i> Properties
+            </a>
+            <a href="/lease_list/" class="nav-link {% if 'lease' in request.path %}active{% endif %}">
+                <i class="fas fa-file-contract"></i> Leases
+            </a>
+            <a href="/payments/" class="nav-link">
+                <i class="fas fa-credit-card"></i> Transactions
+            </a>
+            <a href="{% url 'create_tenant' %}" class="nav-link">
+                <i class="fas fa-user-plus"></i> Add Tenant
+            <a href="#" class="nav-link">
+                <i class="fas fa-users"></i> Tenants
+            </a>
+            <hr class="mx-4 my-4" style="opacity: 0.1;">
+            <a href="/logout/" class="nav-link text-danger">
+                <i class="fas fa-power-off"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="main-wrapper" id="content">
+        <nav class="top-navbar d-flex justify-content-between align-items-center">
+            <button class="btn btn-white shadow-sm border-0 rounded-3" id="toggleSidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="d-flex align-items-center gap-3">
+                <div class="dropdown">
+                    <div class="d-flex align-items-center cursor-pointer" data-bs-toggle="dropdown" style="cursor: pointer;">
+                        <div class="text-end me-3 d-none d-md-block">
+                            <h6 class="mb-0 fw-bold">{{ request.user.get_full_name|default:request.user.username }}</h6>
+                            <small class="text-muted">Administrator</small>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4318ff&color=fff" class="rounded-circle shadow-sm" width="45">
+                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow mt-3">
+                        <li><a class="dropdown-item p-3" href="#"><i class="fas fa-user me-2 text-muted"></i> My Profile</a></li>
+                        <li><a class="dropdown-item p-3 text-danger" href="/logout/"><i class="fas fa-power-off me-2"></i> Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="content-container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Sidebar Toggle Logic
+        const toggleBtn = document.getElementById('toggleSidebar');
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
+
+        toggleBtn.addEventListener('click', () => {
+            if (window.innerWidth > 768) {
+                sidebar.classList.toggle('collapsed');
+                content.classList.toggle('expanded');
+            } else {
+                sidebar.classList.toggle('active');
+            }
+        });
+
+        // 2. Automated JS Pop Messages for Django Messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    icon: '{{ message.tags }}' === 'error' ? 'error' : ('{{ message.tags }}' === 'success' ? 'success' : 'info'),
+                   text: "{{ message|escapejs }}",,
+                    text: '{{ message|safe }}',
+                    timer: 4000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end',
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+            {% endfor %}
+        {% endif %}
+    });
+
+    // 3. Global function for Confirmation Popups (Vacating, Deleting, etc.)
+    window.confirmAction = function(title, text, confirmButtonText, callback) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#4318ff',
+            cancelButtonColor: '#d33',
+            confirmButtonText: confirmButtonText,
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                callback();
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Portal | RentalPay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --tenant-blue: #0d6efd;
+            --soft-bg: #f4f7fe;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--soft-bg);
+        }
+
+        /* Top Navbar */
+        .tenant-nav {
+            background: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Sidebar - Slim for Tenants */
+        .sidebar {
+            background: #fff;
+            min-height: calc(100vh - 72px);
+            border-right: 1px solid #edf2f9;
+        }
+
+        .nav-link {
+            color: #6e84a3;
+            padding: 12px 20px;
+            font-weight: 500;
+            border-radius: 8px;
+            margin: 5px 15px;
+        }
+
+        .nav-link.active {
+            background: rgba(13, 110, 253, 0.1);
+            color: var(--tenant-blue);
+        }
+
+        /* Cards */
+        .balance-card {
+            background: linear-gradient(45deg, #0d6efd, #004fb1);
+            color: white;
+            border-radius: 16px;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::after {
+            content: "";
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .info-card {
+            background: white;
+            border: none;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            height: 100%;
+        }
+
+        .btn-pay {
+            background: white;
+            color: var(--tenant-blue);
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 10px 25px;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-pay:hover {
+            background: #f8f9fa;
+            transform: scale(1.05);
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar tenant-nav sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold text-primary" href="#">
+            <i class="fas fa-key me-2"></i>RentalPay Portal
+        </a>
+        <div class="d-flex align-items-center">
+            <span class="me-3 d-none d-md-inline text-muted">Welcome, {{ user.first_name }}</span>
+            <div class="dropdown">
+                <img src="https://ui-avatars.com/api/?name={{ user.first_name }}&background=0d6efd&color=fff" 
+                     class="rounded-circle dropdown-toggle" style="cursor:pointer" data-bs-toggle="dropdown" width="40">
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#">Profile Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#">Sign Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 d-none d-md-block sidebar py-4">
+            <nav class="nav flex-column">
+                <a class="nav-link active" href="#"><i class="fas fa-th-large me-2"></i> Home</a>
+                <a class="nav-link" href="#"><i class="fas fa-file-invoice me-2"></i> Invoices</a>
+                <a class="nav-link" href="#"><i class="fas fa-tools me-2"></i> Maintenance</a>
+                <a class="nav-link" href="#"><i class="fas fa-comments me-2"></i> Messages</a>
+            </nav>
+        </div>
+
+        <main class="col-md-10 py-4 px-md-5">
+            <div class="row g-4">
+                
+                <div class="col-lg-8">
+                    <div class="balance-card mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-7">
+                                <p class="mb-1 opacity-75">Current Outstanding Balance</p>
+                                <h1 class="display-5 fw-bold mb-3">KES 15,250.00</h1>
+                                <button class="btn btn-pay"><i class="fas fa-credit-card me-2"></i>Pay Now via M-PESA</button>
+                            </div>
+                            <div class="col-md-5 text-md-end d-none d-md-block">
+                                <i class="fas fa-receipt fa-6x opacity-25"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-4">Recent Transactions</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead class="text-muted small">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Ref No.</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Apr 05, 2026</td>
+                                        <td>March Rent Payment</td>
+                                        <td><code class="text-muted">RKJ7L9W1</code></td>
+                                        <td>KES 12,000</td>
+                                        <td><span class="badge bg-success-subtle text-success border border-success">Verified</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mar 02, 2026</td>
+                                        <td>Water Bill (Feb)</td>
+                                        <td><code class="text-muted">REH2M4N0</code></td>
+                                        <td>KES 1,250</td>
+                                        <td><span class="badge bg-success-subtle text-success border border-success">Verified</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="info-card mb-4">
+                        <h6 class="text-muted fw-bold small mb-3">MY RESIDENCE</h6>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary-subtle text-primary p-3 rounded-3 me-3">
+                                <i class="fas fa-door-open fa-lg"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0">Unit B-204</h5>
+                                <p class="text-muted mb-0">Eldopoly Apartments, Block B</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row text-center">
+                            <div class="col-6 border-end">
+                                <p class="small text-muted mb-0">Rent Day</p>
+                                <p class="fw-bold">5th / Month</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="small text-muted mb-0">Lease Ends</p>
+                                <p class="fw-bold">Dec 2026</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card border-start border-4 border-warning">
+                        <h6 class="fw-bold">Need a Repair?</h6>
+                        <p class="small text-muted">Report broken taps, electricity issues or leakage instantly.</p>
+                        <button class="btn btn-outline-warning btn-sm w-100 fw-bold">Request Maintenance</button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

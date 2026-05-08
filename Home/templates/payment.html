@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .ledger-card { border-radius: 20px; border: none; transition: 0.3s; }
+    .status-badge { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+    .status-paid { background: #d1fae5; color: #065f46; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-overdue { background: #fee2e2; color: #991b1b; }
+    .status-partially_paid { background: #e0e7ff; color: #3730a3; }
+    
+    .progress { height: 10px; border-radius: 10px; background-color: #f1f5f9; }
+    .table thead th { border: none; color: #64748b; font-size: 0.7rem; letter-spacing: 1px; }
+    .avatar-circle { width: 40px; height: 40px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #475569; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row g-3 mb-5">
+        <div class="col-md-4">
+            <div class="card ledger-card p-4 bg-white shadow-sm">
+                <p class="text-muted small mb-1">TOTAL EXPECTED</p>
+                <h2 class="fw-bold mb-0">KES {{ total_due }}</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card ledger-card p-4 bg-primary text-white shadow">
+                <p class="opacity-75 small mb-1">TOTAL COLLECTED</p>
+                <h2 class="fw-bold mb-0">KES {{ total_collected }}</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card ledger-card p-4 bg-white shadow-sm">
+                <p class="text-muted small mb-1">OUTSTANDING DEBT</p>
+                <h2 class="fw-bold text-danger mb-0">KES {{ outstanding }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="card ledger-card shadow-sm border-0">
+        <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold m-0 text-dark">Transaction Ledger</h4>
+            <div class="d-flex gap-2">
+                <input type="text" id="ledgerSearch" class="form-control form-control-sm shadow-none" style="max-width: 250px;" placeholder="Search tenant...">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" id="ledgerTable">
+                <thead class="bg-light text-uppercase">
+                    <tr>
+                        <th class="ps-4">Tenant</th>
+                        <th>Month</th>
+                        <th>Progress</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr class="ledger-row border-bottom">
+                        <td class="ps-4 py-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3">{{ p.lease.tenant.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="fw-bold">{{ p.lease.tenant.get_full_name }}</div>
+                                    <small class="text-muted">Unit {{ p.lease.unit.unit_number }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ p.billing_month|date:"M Y" }}</div>
+                            <small class="text-muted">Due: {{ p.due_date|date:"d M" }}</small>
+                        </td>
+                        <td style="width: 200px;">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-bold text-primary">KES {{ p.amount_paid }}</span>
+                                <span class="text-muted">/ {{ p.amount_due }}</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" data-paid="{{ p.amount_paid }}" data-due="{{ p.amount_due }}"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ p.status }}">{{ p.get_status_display }}</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                {% if p.status != 'paid' %}
+                                    <button class="btn btn-dark btn-sm rounded-pill px-3 fw-bold me-2" onclick="showPayModal('{{ p.id }}', '{{ p.amount_due }}', '{{ p.amount_paid }}', '{{ p.lease.tenant.get_full_name }}')">
+                                        Pay
+                                    </button>
+                                {% else %}
+                                    <span class="text-success me-3"><i class="bi bi-patch-check-fill fs-5"></i></span>
+                                {% endif %}
+                                
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="showBillModal('{{ p.lease.id }}', '{{ p.lease.tenant.get_full_name }}', '{{ p.lease.unit.unit_number }}', '{{ p.lease.agreed_rent }}')">
+                                    <i class="bi bi-plus-lg"></i> Bill
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-5">No records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="payModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="payForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="fw-bold">Process Rent Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-4" id="modalTenantName"></p>
+                    <div class="p-3 rounded-3 mb-4 d-flex justify-content-between align-items-center" style="background: #f8f9fa; border-left: 4px solid #dc3545;">
+                        <span class="small fw-bold text-secondary">OUTSTANDING BALANCE:</span>
+                        <span class="fw-bold text-danger fs-5" id="modalBalance">KES 0.00</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">PAYMENT AMOUNT (KES)</label>
+                        <input type="number" name="amount_to_add" id="inputAmount" class="form-control form-control-lg border-2 shadow-none" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">MPESA REFERENCE</label>
+                        <input type="text" name="ref_code" class="form-control border-2 shadow-none" placeholder="e.g. RKL789..." required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow">Submit Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="billModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="billForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="fw-bold">Generate New Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-3" id="billTenantName"></p>
+                    <div class="p-3 bg-light rounded-3 mb-4 border-start border-primary border-4">
+                        <div class="d-flex justify-content-between">
+                            <span class="small fw-bold text-muted">UNIT RENT</span>
+                            <span class="fw-bold text-primary" id="billRentAmount">KES 0.00</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">BILLING MONTH</label>
+                        <input type="date" name="billing_month" class="form-control border-2 shadow-none" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">DUE DATE</label>
+                        <input type="date" name="due_date" class="form-control border-2 shadow-none" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="submit" class="btn btn-dark w-100 py-3 rounded-pill fw-bold">Generate Monthly Bill</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Progress Bar Widths
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+        const paid = parseFloat(bar.dataset.paid);
+        const due = parseFloat(bar.dataset.due);
+        bar.style.width = ((paid / due) * 100) + "%";
+    });
+
+    // 2. Search Functionality
+    document.getElementById('ledgerSearch').addEventListener('input', function(e) {
+        let val = e.target.value.toLowerCase();
+        document.querySelectorAll('.ledger-row').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none';
+        });
+    });
+
+    // 3. Payment Modal Trigger
+    function showPayModal(id, due, paid, name) {
+        const balance = parseFloat(due) - parseFloat(paid);
+        document.getElementById('modalTenantName').innerText = "Recording payment for " + name;
+        document.getElementById('modalBalance').innerText = "KES " + balance.toLocaleString();
+        document.getElementById('inputAmount').value = balance;
+        document.getElementById('inputAmount').max = balance;
+        document.getElementById('payForm').action = `/payment/process/${id}/`;
+        new bootstrap.Modal(document.getElementById('payModal')).show();
+    }
+
+    // 4. NEW: Billing Modal Trigger
+    function showBillModal(leaseId, name, unit, rent) {
+        document.getElementById('billTenantName').innerText = `Preparing invoice for ${name} (Unit ${unit})`;
+        document.getElementById('billRentAmount').innerText = `KES ${parseFloat(rent).toLocaleString()}`;
+        document.getElementById('billForm').action = `/lease/${leaseId}/create-bill/`;
+        new bootstrap.Modal(document.getElementById('billModal')).show();
+    }
+</script>
+{% endblock %}

@@ -252,7 +252,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from .models import RentPayment
 from django.contrib import messages
-
+@login_required(login_url='Login')
 def payment_ledger(request, lease_id=None):
     # If lease_id is provided, show specific; else show all for the property manager
     if lease_id:

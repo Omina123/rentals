@@ -146,3 +146,11 @@ AUTHENTICATION_BACKENDS = [
     'Users.backends.PhoneOrEmailBackend', # Path to the class we just created
     'django.contrib.auth.backends.ModelBackend', # Keep default as fallback
 ]
+LOGIN_URL = 'Login'  # This should match the name of your login URL pattern in urls.py CSRF_COOKIE_SECURE = True
+# 1. Session age in seconds (5 min
+SESSION_COOKIE_AGE = 3600
+# 2. Logout the user when the brow
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# 3. Save the session on every req
+SESSION_SAVE_EVERY_REQUEST = True

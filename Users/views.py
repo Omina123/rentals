@@ -6,7 +6,11 @@ from .forms import*
 from django.contrib.auth import authenticate, login
 
 from Home import views
-
+def Logout(request):
+    from django.contrib.auth import logout
+    logout(request)
+    messages.success(request, "You have been logged out successfully.")
+    return redirect('Login')
 def register(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)

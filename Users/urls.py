@@ -7,5 +7,7 @@ from Home import views as home_views
 urlpatterns = [
     path('admin/', admin.site.urls),
    path('register/', views.register, name='register'),  # ✅ FIXED
-    path('login/', views.Login, name='Login'),           # also fix consistency
+    path('login/', views.Login, name='Login'),  
+    path('logout/', views.Logout, name='Logout'),
+    # also fix consistency
 ]

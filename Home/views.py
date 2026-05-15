@@ -167,13 +167,17 @@ from django.db import transaction
 from django.contrib import messages
 from .models import Unit, Lease
 from Users.models import CustomUser
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.db import transaction
+from .models import Unit, Tenant, Lease
 
 def activate_lease(request, unit_id):
     unit = get_object_or_404(Unit, id=unit_id)
     
-    # Architect Check: Don't allow leasing an occupied unit
+    # 1. Validation: Prevent leasing an occupied unit
     if unit.is_occupied:
-        messages.error(request, "This unit is already occupied by an active lease.")
+        messages.error(request, f"Unit {unit.unit_number} is already occupied.")
         return redirect('unit_manager', property_id=unit.property.id)
 
     if request.method == "POST":
@@ -182,7 +186,8 @@ def activate_lease(request, unit_id):
                 tenant_id = request.POST.get('tenant')
                 tenant = get_object_or_404(Tenant, id=tenant_id)
                 
-                lease = Lease.objects.create(
+                # Create the Lease record
+                Lease.objects.create(
                     tenant=tenant,
                     unit=unit,
                     start_date=request.POST.get('start_date'),
@@ -192,16 +197,57 @@ def activate_lease(request, unit_id):
                     is_active=True
                 )
                 
-            messages.success(request, f"Lease activated for {tenant.get_full_name()}!")
+                # 2. IMPORTANT: Update unit status so it shows as occupied
+                unit.is_occupied = True
+                unit.save()
+                
+            messages.success(request, f"Lease activated successfully for {tenant.full_name}!")
             return redirect('unit_manager', property_id=unit.property.id)
+            
         except Exception as e:
             messages.error(request, f"Activation Error: {str(e)}")
+            return redirect('activate_lease', unit_id=unit.id)
 
-    tenants = Tenant.objects.all() # Tenants only
+    # Context for the GET request
+    tenants = Tenant.objects.all().order_by('full_name')
     return render(request, 'activate_lease.html', {
         'unit': unit, 
         'tenants': tenants
     })
+# def activate_lease(request, unit_id):
+    # unit = get_object_or_404(Unit, id=unit_id)
+    # 
+    # Architect Check: Don't allow leasing an occupied unit
+    # if unit.is_occupied:
+        # messages.error(request, "This unit is already occupied by an active lease.")
+        # return redirect('unit_manager', property_id=unit.property.id)
+# 
+    # if request.method == "POST":
+        # try:
+            # with transaction.atomic():
+                # tenant_id = request.POST.get('tenant')
+                # tenant = get_object_or_404(Tenant, id=tenant_id)
+                # 
+                # lease = Lease.objects.create(
+                    # tenant=tenant,
+                    # unit=unit,
+                    # start_date=request.POST.get('start_date'),
+                    # end_date=request.POST.get('end_date') or None,
+                    # agreed_rent=request.POST.get('agreed_rent'),
+                    # agreed_deposit=request.POST.get('agreed_deposit'),
+                    # is_active=True
+                # )
+                # 
+            # messages.success(request, f"Lease activated for {tenant.get_full_name()}!")
+            # return redirect('unit_manager', property_id=unit.property.id)
+        # except Exception as e:
+            # messages.error(request, f"Activation Error: {str(e)}")
+# 
+    # tenants = Tenant.objects.all() # Tenants only
+    # return render(request, 'activate_lease.html', {
+        # 'unit': unit, 
+        # 'tenants': tenants
+    # })
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from .models import RentPayment

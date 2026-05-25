@@ -7,7 +7,7 @@ urlpatterns = [
     path('about/', views.about, name="about"), 
     path('contact/', views.contact, name="contact"), 
     path('dashboard/', views.dashboard, name="dashboard"),
-    path('tenants/', views.Tenans, name="tenants"),
+    # path('tenants/', views.Tenans, name="tenants"),
     path('property_list/', views.property_list, name="property_list"),
     path('add_property/', views.add_property, name="add_property"),
    # Unit Management (Hierarchical)
@@ -24,4 +24,5 @@ urlpatterns = [
     path('lease/<int:lease_id>/pay/', views.record_payment, name='record_payment'),
     path('unit/<int:unit_id>/vacate/', views.vacate_unit, name='vacate_unit'),
     path('create_tenant/', views.create_tenant, name='create_tenant'),
+    path ('tenant_list/', views.tenant_list, name='tenant_list'),
     ]

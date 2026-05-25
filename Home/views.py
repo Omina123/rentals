@@ -11,45 +11,45 @@ from django.shortcuts import render
 from django.db.models import Sum, Count
 from .models import Property, Unit, Lease, RentPayment
 from django.contrib.auth.decorators import login_required
-
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+from django.utils import timezone
+from .models import Property, Lease, RentPayment, Tenant
 @login_required
+# from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+# from django.utils import timezone
+# from decimal import Decimal
+
 def dashboard(request):
-    # 1. Total Properties owned or managed by this user
-    # Adjust filtering based on whether the user is a Landlord ('2') or Manager ('3')
+    # Determine user scope
     if request.user.user_type == '2':
         properties = Property.objects.filter(owner=request.user)
     else:
         properties = Property.objects.filter(manager=request.user)
 
+    # Calculate metrics
     total_properties = properties.count()
+    total_tenants = Tenant.objects.filter(leases__unit__property__in=properties, leases__is_active=True).distinct().count()
 
-    # 2. Total Tenants (Active Leases associated with those properties)
-    active_leases = Lease.objects.filter(unit__property__in=properties, is_active=True)
-    total_tenants = active_leases.values('tenant').distinct().count()
-
-    # 3. Monthly Revenue (Total paid this month)
-    current_month = timezone.now().month
-    current_year = timezone.now().year
+    now = timezone.now()
     
-    monthly_revenue = RentPayment.objects.filter(
+    # Use Coalesce to ensure we get a Decimal(0) instead of None
+    revenue_data = RentPayment.objects.filter(
         lease__unit__property__in=properties,
-        last_payment_date__month=current_month,
-        last_payment_date__year=current_year
-    ).aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+        status='paid',
+        last_payment_date__month=now.month,
+        last_payment_date__year=now.year
+    ).aggregate(total=Sum('amount_paid'))
+    
+    monthly_revenue = revenue_data['total'] or Decimal('0.00')
 
-    # 4. Pending Rent (Sum of amount_due - amount_paid for unpaid bills)
-    # We calculate the difference between due and paid for all non-paid statuses
+    # Pending calculation
     pending_data = RentPayment.objects.filter(
-        lease__unit__property__in=properties,
-        status__in=['pending', 'partially_paid', 'overdue']
+        lease__unit__property__in=properties
+    ).exclude(status='paid').aggregate(
+        total=Sum(F('amount_due') - F('amount_paid'))
     )
-    
-    # Logic: Sum(due) - Sum(paid)
-    total_due = pending_data.aggregate(Sum('amount_due'))['amount_due__sum'] or 0
-    total_paid_towards_pending = pending_data.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
-    pending_rent = total_due - total_paid_towards_pending
+    pending_rent = pending_data['total'] or Decimal('0.00')
 
-    # 5. Recent Payments Table
     recent_payments = RentPayment.objects.filter(
         lease__unit__property__in=properties
     ).order_by('-last_payment_date')[:10]
@@ -57,13 +57,62 @@ def dashboard(request):
     context = {
         'total_properties': total_properties,
         'total_tenants': total_tenants,
-        'monthly_revenue': monthly_revenue,
-        'pending_rent': pending_rent,
+        'monthly_revenue': float(monthly_revenue),
+        'pending_rent': float(pending_rent),
         'recent_payments': recent_payments,
     }
     return render(request, "dashboard.html", context)
-def Tenans(request):
-    return render(request, "tenant.html")
+# @login_required
+# def dashboard(request):
+#     # STEP 1: Properties
+#     if request.user.user_type == '2':
+#         properties = Property.objects.filter(owner=request.user)
+#     else:
+#         properties = Property.objects.filter(manager=request.user)
+
+#     property_ids = properties.values_list('id', flat=True)
+
+#     total_properties = properties.count()
+
+#     # STEP 2: Tenants (FIXED - no silent filter failure)
+#     total_tenants = Tenant.objects.filter(
+#         leases__unit__property_id__in=property_ids,
+#         leases__is_active=True
+#     ).distinct().count()
+
+#     # STEP 3: Revenue (safe chain)
+#     current_month = timezone.now().month
+#     current_year = timezone.now().year
+
+#     monthly_revenue = RentPayment.objects.filter(
+#         lease__unit__property_id__in=property_ids,
+#         last_payment_date__month=current_month,
+#         last_payment_date__year=current_year,
+#     ).aggregate(total=Sum('amount_paid'))['total'] or 0
+
+#     # STEP 4: Pending rent (safe)
+#     pending_rent = RentPayment.objects.filter(
+#         lease__unit__property_id__in=property_ids
+#     ).exclude(status='paid').aggregate(
+#         total=Sum(F('amount_due') - F('amount_paid'))
+#     )['total'] or 0
+
+#     # STEP 5: Recent payments
+#     recent_payments = RentPayment.objects.filter(
+#         lease__unit__property_id__in=property_ids
+#     ).order_by('-last_payment_date')[:10]
+
+#     context = {
+#         'total_properties': total_properties,
+#         'total_tenants': total_tenants,
+#         'monthly_revenue': float(monthly_revenue),
+#         'pending_rent': float(pending_rent),
+#         'recent_payments': recent_payments,
+#     }
+
+#     return render(request, "dashboard.html", context)
+# def Tenans(request):
+    # return render(request, "tenant.html")
 
 def about(request):
     return render(request, "about.html")
@@ -78,7 +127,9 @@ def property_list(request):
     print(f"DEBUG: Found {properties.count()} properties for {request.user.username}")
     
     return render(request, 'property_list.html', {'properties': properties})
-
+def tenant_list(request):
+    tenants = Tenant.objects.all().order_by('full_name')
+    return render(request, 'tenant_list.html', {'tenants': tenants})
 def add_property(request):
     # if request.user.user_type not in ['1', '2']: # Only Admin or Landlord
     #     messages.error(request, "Unauthorized.")

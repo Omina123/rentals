@@ -151,10 +151,11 @@
         </div>
         <div class="mt-4">
             <a href="#" class="nav-link active"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="/create_tenant/" class="nav-link"><i class="fas fa-user-plus"></i> Add Tenant</a>
             <a href="/property_list/" class="nav-link"><i class="fas fa-city"></i> Properties</a>
             <a href="/lease_list/" class="nav-link"><i class="fas fa-file-contract"></i> Leases</a>
             <a href="/payments/" class="nav-link"><i class="fas fa-credit-card"></i> Transactions</a>
-            <a href="#" class="nav-link"><i class="fas fa-users"></i> Tenants</a>
+            <a href="{% url 'tenant_list' %}" class="nav-link"><i class="fas fa-users"></i> Tenants</a>
             <hr class="mx-4 my-4">
             <a href="{% url 'Logout' %}" class="nav-link text-danger"><i class="fas fa-power-off"></i> Logout</a>
         </div>
@@ -189,7 +190,7 @@
         <div class="p-4 p-md-5">
             <div class="mb-5">
                 <h2 class="fw-800 mb-1">Welcome back, {{ user.first_name|capfirst }} {{ user.last_name|capfirst }}</h2>
-                <p class="text-muted" id="live-clock"></p>
+                <p class="text-muted" id="live-clock">Loading system metrics date...</p>
             </div>
 
             <div class="row g-4 mb-5">
@@ -204,6 +205,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="col-md-3">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between">
@@ -215,6 +217,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="col-md-3">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between">
@@ -226,106 +229,124 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="col-md-3">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between">
                             <div>
                                 <p class="text-muted small fw-bold mb-1">PENDING</p>
-                                <h3 class="fw-800 mb-0 text-danger">KES <span class="counter" data-target="{{ pending_rent }}">0</span></h3>
+                                <h3 class="fw-800 mb-0">KES <span class="counter" data-target="{{ pending_rent }}">0</span></h3>
                             </div>
-                            <div class="icon-shape text-danger" style="background: rgba(238, 93, 108, 0.1);"><i class="fas fa-clock"></i></div>
+                            <div class="icon-shape text-danger" style="background: rgba(237, 76, 120, 0.1);"><i class="fas fa-exclamation-circle"></i></div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="table-container">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-800 mb-0">Recent Activity</h5>
-                    <div class="d-flex gap-2">
-                        <input type="text" id="tableFilter" class="form-control form-control-sm border-0 bg-light" placeholder="Filter by name...">
-                        <button class="btn btn-sm btn-primary rounded-pill px-3">Export CSV</button>
-                    </div>
-                </div>
+                <h5 class="fw-800 mb-4">Recent Payment Processing Activity</h5>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle border-0" id="mainTable">
+                    <table class="table table-hover align-middle border-0">
                         <thead class="text-muted small text-uppercase">
                             <tr>
-                                <th class="border-0">Tenant</th>
-                                <th class="border-0">Unit</th>
-                                <th class="border-0">Date</th>
-                                <th class="border-0">Amount</th>
+                                <th class="border-0">Tenant Details</th>
+                                <th class="border-0">Billing Period</th>
+                                <th class="border-0">Paid (KES)</th>
                                 <th class="border-0">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for payment in recent_payments %}
                             <tr>
-                                <td class="border-0 fw-bold">{{ payment.lease.tenant.get_full_name|capfirst }}</td>
-                                <td class="border-0 text-muted">{{ payment.lease.unit.unit_number }}</td>
-                                <td class="border-0 text-muted">{{ payment.last_payment_date|date:"d M Y" }}</td>
-                                <td class="border-0 fw-bold">KES {{ payment.amount_paid|intcomma }}</td>
+                                <td class="border-0 fw-bold">{{ payment.lease.tenant.full_name|capfirst }} <br><small class="text-muted fw-normal">{{ payment.lease.unit }}</small></td>
+                                <td class="border-0 text-muted">{{ payment.billing_month|date:"F Y" }}</td>
+                                <td class="border-0 fw-bold">{{ payment.amount_paid|intcomma }}</td>
                                 <td class="border-0">
                                     {% if payment.status == 'paid' %}
-                                    <span class="status-badge bg-success-subtle text-success">Paid</span>
+                                        <span class="status-badge bg-success-subtle text-success">Paid</span>
+                                    {% elif payment.status == 'partially_paid' %}
+                                        <span class="status-badge bg-warning-subtle text-warning">Partial</span>
                                     {% else %}
-                                    <span class="status-badge bg-warning-subtle text-warning">Pending</span>
+                                        <span class="status-badge bg-danger-subtle text-danger">Pending</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="5" class="text-center py-5 text-muted">No data available</td></tr>
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No real-time transactions captured within the portfolio during this calendar cycle.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const toggleBtn = document.getElementById('toggleSidebar');
+    document.addEventListener("DOMContentLoaded", function () {
+        // 1. Sidebar Toggler Control Layer
+        const toggleSidebar = document.getElementById('toggleSidebar');
         const sidebar = document.getElementById('sidebar');
-        toggleBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-            sidebar.classList.toggle('active');
-        });
+        if (toggleSidebar && sidebar) {
+            toggleSidebar.addEventListener('click', function () {
+                sidebar.classList.toggle('collapsed');
+                sidebar.classList.toggle('active');
+            });
+        }
 
+        // 2. Continuous Real-time Calendar Engine Setup
+        function updateClock() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) {
+                clockEl.textContent = now.toLocaleDateString('en-GB', options).replace(/,/g, ' at');
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 3. Mathematical Numerical Counter Run Script
         const counters = document.querySelectorAll('.counter');
         counters.forEach(counter => {
-            const target = +counter.getAttribute('data-target');
-            const increment = target / 50;
+            const target = parseFloat(counter.getAttribute('data-target')) || 0;
+            
+            // Check if it's a financial metric context layout view
+            const isCurrency = counter.closest('h3').textContent.includes('KES');
+            
+            if (target === 0) {
+                counter.innerText = "0";
+                return;
+            }
+
+            let count = 0;
+            const speed = 40; // Frame update rate variable
+            const increment = target / speed;
+
             const updateCount = () => {
-                const count = +counter.innerText.replace(/,/g, '');
+                count += increment;
                 if (count < target) {
-                    counter.innerText = Math.ceil(count + increment).toLocaleString();
+                    counter.innerText = isCurrency ? Math.floor(count).toLocaleString() : Math.floor(count);
                     setTimeout(updateCount, 20);
                 } else {
-                    counter.innerText = target.toLocaleString();
+                    counter.innerText = isCurrency ? target.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : target;
                 }
             };
             updateCount();
         });
-
-        const tableInput = document.getElementById('tableFilter');
-        tableInput.addEventListener('keyup', (e) => {
-            const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#mainTable tbody tr');
-            rows.forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
-            });
-        });
-
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('live-clock').innerText = now.toLocaleString('en-GB', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
-                hour: '2-digit', minute: '2-digit', second: '2-digit' 
-            });
-        }, 1000);
     });
 </script>
 </body>
